@@ -1,0 +1,6 @@
+Model,Accuracy,Precision,Recall,F1-Score
+Logistic Regression,50.14,52.05,69.02,59.35
+SVM,49.57,51.57,71.2,59.82
+BiLSTM (Price Only),52.72,52.72,100.0,69.04
+CNN Only (Charts),51.29,54.93,42.39,47.85
+Multimodal (Ours),54.44,55.41,69.57,61.69
