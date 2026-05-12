@@ -1,0 +1,316 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketMind — Market Prediction Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════  HEADER  ═══════════════════════════ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="logo-icon">◈</span>
+    <span class="logo-text">MARKET<span class="logo-accent">MIND</span></span>
+    <span class="logo-tag">NEURAL MARKET INTELLIGENCE</span>
+  </div>
+  <div class="topbar-center">
+    <div class="ticker-strip" id="tickerStrip">
+      <span class="tick-item">S&amp;P 500 <span class="tick-val" id="spxVal">—</span> <span class="tick-chg" id="spxChg">—</span></span>
+      <span class="tick-sep">|</span>
+      <span class="tick-item">MODEL <span class="tick-val" id="modelMode">LOADING</span></span>
+      <span class="tick-sep">|</span>
+      <span class="tick-item">DEVICE <span class="tick-val" id="deviceVal">—</span></span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">CONNECTING</span>
+    <span class="clock" id="clock"></span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════  MAIN GRID  ═══════════════════════════ -->
+<main class="grid">
+
+  <!-- ── LEFT PANEL ── -->
+  <aside class="panel panel-left">
+
+    <!-- Price Input -->
+    <section class="card" id="priceCard">
+      <div class="card-header">
+        <span class="card-icon">📈</span>
+        <span class="card-title">PRICE STREAM</span>
+        <button class="btn-ghost btn-sm" id="fetchBtn" onclick="fetchLivePrices()">
+          <span class="btn-icon">⟳</span> LIVE
+        </button>
+      </div>
+      <div class="card-body">
+        <p class="hint">10 consecutive trading-day closes (oldest → newest)</p>
+        <div class="price-grid" id="priceGrid">
+          <!-- 10 inputs injected by JS -->
+        </div>
+        <div class="price-actions">
+          <button class="btn-ghost btn-xs" onclick="clearPrices()">CLEAR</button>
+          <button class="btn-ghost btn-xs" onclick="fillDemo()">DEMO DATA</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Headline Input -->
+    <section class="card" id="headlineCard">
+      <div class="card-header">
+        <span class="card-icon">📰</span>
+        <span class="card-title">NEWS SIGNAL</span>
+      </div>
+      <div class="card-body">
+        <p class="hint">Paste today's top financial headline or summary</p>
+        <textarea id="headlineInput" class="headline-input"
+          placeholder="e.g. Fed holds rates steady as inflation cools; markets rally on strong jobs data..."></textarea>
+        <div class="char-counter"><span id="charCount">0</span> / 512 chars</div>
+      </div>
+    </section>
+
+    <!-- Run Button -->
+    <button class="btn-predict" id="predictBtn" onclick="runPrediction()">
+      <span class="btn-predict-icon">⚡</span>
+      RUN PREDICTION
+    </button>
+
+  </aside>
+
+  <!-- ── CENTER PANEL ── -->
+  <section class="panel panel-center">
+
+    <!-- Result Card — always visible, branding stays, prediction fills below -->
+    <div class="result-card" id="resultCard">
+
+      <!-- ── ALWAYS-VISIBLE BRAND HEADER ── -->
+      <div class="brand-header">
+        <div class="brand-hex-ring">
+          <div class="brand-hex">◈</div>
+          <svg class="brand-orbit" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#1e2d3d" stroke-width="1" stroke-dasharray="4 6"/>
+            <circle class="orbit-dot" cx="110" cy="60" r="3" fill="#00ff88"/>
+          </svg>
+        </div>
+        <div class="brand-name">MARKET<span class="brand-accent">MIND</span></div>
+        <div class="brand-tagline">NEURAL MARKET INTELLIGENCE ENGINE</div>
+        <div class="brand-pills">
+          <span class="brand-pill">ResNet18</span>
+          <span class="brand-pill">FinBERT</span>
+          <span class="brand-pill">Multimodal Fusion</span>
+          <span class="brand-pill">S&amp;P 500</span>
+        </div>
+
+        <!-- Prediction signal — hidden until prediction runs -->
+        <div class="brand-signal hidden" id="brandSignal">
+          <span class="brand-signal-word" id="brandSignalWord">—</span>
+          <span class="brand-signal-prob" id="brandSignalProb">—</span>
+        </div>
+      </div>
+
+      <!-- ── PREDICTION AREA (idle / active / loading) ── -->
+      <div class="pred-area">
+
+        <!-- IDLE -->
+        <div class="result-idle" id="resultIdle">
+          <div class="idle-center-text">
+            <div class="idle-center-label">AWAITING PREDICTION</div>
+            <div class="idle-center-sub">Enter 10 prices &amp; a headline, then hit RUN PREDICTION</div>
+          </div>
+        </div>
+
+        <!-- ACTIVE -->
+        <div class="result-active hidden" id="resultActive">
+
+          <!-- Big prediction hero -->
+          <div class="pred-hero" id="predHero">
+            <div class="pred-hero-bg" id="predHeroBg"></div>
+            <div class="pred-hero-content">
+              <div class="pred-label" id="predLabel">—</div>
+              <div class="pred-prob-row">
+                <span class="pred-prob-item">
+                  <span class="pred-prob-key">UP</span>
+                  <span class="pred-prob-val bullish" id="predUpPct">—</span>
+                </span>
+                <span class="pred-prob-divider">|</span>
+                <span class="pred-prob-item">
+                  <span class="pred-prob-key">DOWN</span>
+                  <span class="pred-prob-val bearish" id="predDownPct">—</span>
+                </span>
+                <span class="pred-prob-divider">|</span>
+                <span class="pred-prob-item">
+                  <span class="pred-prob-key">CONFIDENCE</span>
+                  <span class="pred-prob-val" id="predConf">—</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gauge bar -->
+          <div class="verdict-block" id="verdictBlock">
+            <div class="gauge-section">
+              <div class="gauge-label">
+                <span class="gauge-bear">◀ BEARISH</span>
+                <span class="gauge-prob" id="gaugeProb">—</span>
+                <span class="gauge-bull">BULLISH ▶</span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" id="gaugeFill"></div>
+                <div class="gauge-needle" id="gaugeNeedle"></div>
+              </div>
+              <div class="gauge-pcts">
+                <span class="gauge-pct-bear" id="downPct">—</span>
+                <span class="gauge-pct-bull" id="upPct">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats row -->
+          <div class="stats-row">
+            <div class="stat-box">
+              <div class="stat-label">PROBABILITY</div>
+              <div class="stat-val" id="statProb">—</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">SIGNAL</div>
+              <div class="stat-val" id="statSignal">—</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">CONFIDENCE</div>
+              <div class="stat-val" id="statConf">—</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">TIME</div>
+              <div class="stat-val" id="verdictTime">—</div>
+            </div>
+          </div>
+
+          <!-- Headline echo -->
+          <div class="headline-echo">
+            <span class="echo-label">NEWS INPUT</span>
+            <span class="echo-text" id="echoText">—</span>
+          </div>
+
+          <!-- Hidden stubs for JS compatibility -->
+          <span id="verdictBadge" style="display:none"></span>
+          <span id="verdictConf" style="display:none"></span>
+          <span id="verdictProbBig" style="display:none"></span>
+          <span id="signalWord" style="display:none"></span>
+          <span id="signalBannerBg" style="display:none"></span>
+          <span id="bannerUpPct" style="display:none"></span>
+          <span id="bannerDownPct" style="display:none"></span>
+          <span id="bannerConf" style="display:none"></span>
+          <img id="sparklineImg" style="display:none" src="" alt="" />
+
+        </div><!-- /result-active -->
+
+        <!-- LOADING -->
+        <div class="result-loading hidden" id="resultLoading">
+          <div class="loader-ring"></div>
+          <div class="loader-text">PROCESSING MULTIMODAL STREAMS</div>
+          <div class="loader-sub" id="loaderSub">Initialising neural fusion engine...</div>
+        </div>
+
+      </div><!-- /pred-area -->
+
+    </div><!-- /result-card -->
+
+    <!-- Mini price chart (canvas) -->
+    <div class="card mini-chart-card">
+      <div class="card-header">
+        <span class="card-icon">◻</span>
+        <span class="card-title">PRICE WINDOW VISUALISER</span>
+      </div>
+      <div class="card-body">
+        <canvas id="priceCanvas" width="600" height="120"></canvas>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── RIGHT PANEL ── -->
+  <aside class="panel panel-right">
+
+    <!-- Model Status -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-icon">🧠</span>
+        <span class="card-title">MODEL STATUS</span>
+      </div>
+      <div class="card-body">
+        <div class="status-grid" id="modelStatusGrid">
+          <div class="status-row"><span>Status</span><span class="tag tag-loading" id="msStatus">—</span></div>
+          <div class="status-row"><span>Device</span><span id="msDevice">—</span></div>
+          <div class="status-row"><span>Weights</span><span id="msWeights">—</span></div>
+          <div class="status-row"><span>Mode</span><span id="msMode">—</span></div>
+          <div class="status-row"><span>Accuracy</span><span class="tag tag-ok" id="msAccuracy">54.4%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Training History -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <span class="card-title">TRAINING HISTORY</span>
+        <button class="btn-ghost btn-sm" onclick="loadHistory()">LOAD</button>
+      </div>
+      <div class="card-body">
+        <canvas id="historyCanvas" width="280" height="140"></canvas>
+        <div class="history-legend">
+          <span class="leg-item"><span class="leg-dot" style="background:#00ff88"></span>Train Loss</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#ff9900"></span>Val Loss</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#00aaff"></span>Val Acc</span>
+        </div>
+        <div class="history-stats" id="historyStats"></div>
+      </div>
+    </section>
+
+    <!-- Model Comparison -->
+    <section class="card">
+      <div class="card-header">
+        <span class="card-icon">🏆</span>
+        <span class="card-title">MODEL COMPARISON</span>
+        <button class="btn-ghost btn-sm" onclick="loadComparison()">LOAD</button>
+      </div>
+      <div class="card-body">
+        <div class="comp-list" id="comparisonList">
+          <div class="log-empty">Click LOAD to see results</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Prediction Log -->
+    <section class="card log-card">
+      <div class="card-header">
+        <span class="card-icon">🗂</span>
+        <span class="card-title">SESSION LOG</span>
+        <button class="btn-ghost btn-sm" onclick="clearLog()">CLEAR</button>
+      </div>
+      <div class="card-body">
+        <div class="log-list" id="logList">
+          <div class="log-empty">No predictions yet</div>
+        </div>
+      </div>
+    </section>
+
+  </aside>
+</main>
+
+<!-- ═══════════════════════════  FOOTER  ═══════════════════════════ -->
+<footer class="footer">
+  <span>MarketMind v2.0 — ResNet18 + FinBERT Multimodal Fusion | Acc: 54.4%</span>
+  <span class="footer-sep">|</span>
+  <span>API: <code>localhost:5000</code></span>
+  <span class="footer-sep">|</span>
+  <span id="footerModel">Model: checking...</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
